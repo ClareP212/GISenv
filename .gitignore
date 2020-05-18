@@ -1,0 +1,7 @@
+# Portable Document Format
+*.tif
+*.tif.aux.xml
+*.tif.ovr
+*.tif.vat.cpg
+*.tfw
+*.tif.vat.dbf
