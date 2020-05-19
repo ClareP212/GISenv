@@ -20,3 +20,9 @@ MyProject9/.pyHistory
 MyProject9/MyProject9.gdb/gdb
 MyProject9/MyProject9.gdb/timestamps
 *.tbx
+MyProject9/Index/MyProject9/segments_d
+*.del
+MyProject9/Index/MyProject9/segments_n
+MyProject9/Index/Thumbnail/indx
+*.jpg
+*.freelist
