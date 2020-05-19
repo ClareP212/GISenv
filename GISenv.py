@@ -39,7 +39,6 @@ for i in inputRastDir :
     
 arcpy.AddMessage (" X Values = ") 
 arcpy.AddMessage (xTime) 
-arcpy.AddMessage (inputRastDir) 
     
 ## Creating raster stack tif file
 arcpy.CompositeBands_management(inputRastDir,"stack") #.tif extension broke this?
@@ -61,14 +60,12 @@ def arcRast (inputRasterList,i):
     return arcRaster
 
 # create empty numpy arrays
-#arcpy.AddMessage ((arcRast(inputRasters,1).height,arcRast(inputRasters,1).width))
 slope_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
 dataCount_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
 pvalue_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
 std_err_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
 
-
-#Iteration
+# Pixel Iteration
 row_no = -1
 for row in slope_rast:
     row_no = row_no +1
@@ -95,8 +92,6 @@ for row in slope_rast:
                 
          # Linear Regression and count datapoints
         if len(cell_list) == 0:
-            #arcpy.AddMessage (row_no)
-            #arcpy.AddMessage (cell_no)
             slope_rast[row_no][cell_no] = noData
             dataCount_rast[row_no][cell_no] = 0
             pvalue_rast[row_no][cell_no] = noData
@@ -118,6 +113,8 @@ lowerLeft = arcpy.Point(arcRast(inputRastDir,1).extent.XMin,arcRast(inputRastDir
 slopeOut = os.path.join(outputFolder,r"slope.tif")
 dataCountOut = os.path.join(outputFolder,r"dataCount.tif")
 pvalueOut = os.path.join(outputFolder,r"pvalue.tif")
+stderrOut = os.path.join(outputFolder,r"stderr.tif")
+
 
 #  (bands, rows, columns)
 # change yvalue for band number - i.e. image number
@@ -127,14 +124,12 @@ output_r = arcpy.NumPyArrayToRaster(dataCount_rast,lowerLeft, arcRast(inputRastD
 output_r.save(dataCountOut)
 output_r = arcpy.NumPyArrayToRaster(pvalue_rast,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
 output_r.save(pvalueOut)
+output_r = arcpy.NumPyArrayToRaster(std_err_rast,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+output_r.save(stderrOut)
 
         
 """
-Error Handling
-arcpy.AddError(“No ArcMap Documents found. Please check your input \    variables.”) 
-
 IDEAS
-- ## raster size test
 - irregular shape handling
-- if no data the same
+- pixel clustering
 """
