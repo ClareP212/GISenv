@@ -4,8 +4,7 @@ Created on Sat May  9 13:16:42 2020
 
 @author: Clare
 
-
-Mulitvalues are passed to your script as semicolon-delimited strings
+Script tool for ArcGIS Pro which conducts a per pixel linear regression on a time series of single band rasters.
 
 """
 # Import modules
@@ -77,6 +76,7 @@ def arcRast (inputRasterList,i):
 slope_rast = np.zeros((arcRast(inputRasters,1).height,arcRast(inputRasters,1).width))
 dataCount_rast = np.zeros((arcRast(inputRasters,1).height,arcRast(inputRasters,1).width))
 pvalue_rast = np.zeros((arcRast(inputRasters,1).height,arcRast(inputRasters,1).width))
+std_err_rast = np.zeros((arcRast(inputRasters,1).height,arcRast(inputRasters,1).width))
 
 
 #Iteration
@@ -115,6 +115,7 @@ for row in slope_rast:
             slope, intercept, r_value, p_value, std_err = stats.linregress(x, cell_list)
             slope_rast[row_no][cell_no] = slope
             pvalue_rast[row_no][cell_no] = p_value
+            std_err_rast[row_no][cell_no] = std_err
             dataCount_rast[row_no][cell_no] = len(cell_list)
 
 ## Output File creation
@@ -144,11 +145,7 @@ Error Handling
 arcpy.AddError(“No ArcMap Documents found. Please check your input \    variables.”) 
 
 IDEAS
-- file format identifier
-- just a .tif for now
 - ## raster size test
-- tickbox ignore not data
-- tickboxes of outputs wnate i.e. slope etc
 - irregular shape handling
 - if no data the same
 """
