@@ -11,35 +11,42 @@ from scipy import stats
 import os
 
 # Input parameters
+inputRasters = ['C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2010.tif 2010',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2011.tif 2011',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2012.tif 2012',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2013.tif 2013',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2014.tif 2014',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2015.tif 2015',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2016.tif 2016',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2017.tif 2017',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2018.tif 2018',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2019.tif 2019',
+                'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2020.tif 2020']
+outputFolder = "C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0"
 
-
-
-# Input parameters
-outputFolder = arcpy.GetParameterAsText(0)
-inputRasters = arcpy.GetParameterAsText(1)
-
-# Split strings
-inputRasters = inputRasters.split(";")
-arcpy.AddMessage ("Split parameter texts...")
+arcpy.env.workspace = "C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0"
+arcpy.env.overwriteOutput = True
 
 # Get raster file Directories
-inputRastDir = ['C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2010.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2011.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2012.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2013.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2014.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2015.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2016.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2017.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2018.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2019.tif', 'C:\\Users\\Clare\\Documents\\ArcGIS_uni\\GISenv\\0\\MOD_an\\2020.tif']
+inputRastDir = []
 for i in range(len(inputRasters)):
     inputRastDir.append(inputRasters[i].split(" ")[0])
     
 # Get inputted X/time values
 xTime = []
 for i in range(len(inputRasters)):
-    xTime.append(os.path.basename(inputRasters[i].split(" ")[1]))
-
+    xTime.append(int(os.path.basename(inputRasters[i].split(" ")[1])))
+    
 # Get NoData values from input raster 
-for i in inputRastDir:
+for i in inputRastDir :
     desc=arcpy.Describe(i)
-    #arcpy.AddMessage (desc.noDataValue) 
     noData = desc.noDataValue
     
+arcpy.AddMessage (" X Values = ") 
+arcpy.AddMessage (xTime) 
+    
 ## Creating raster stack tif file
-arcpy.CompositeBands_management(inputRastDir,"stack.tif")
+arcpy.CompositeBands_management(inputRastDir,"stack.tif") #.tif extension broke this in ArcPro?
 stack = os.path.join(outputFolder,r"stack.tif")
 stackNP = arcpy.RasterToNumPyArray((arcpy.Raster(stack)),
                          (arcpy.Point((arcpy.Raster(stack)).extent.XMin,
@@ -47,7 +54,6 @@ stackNP = arcpy.RasterToNumPyArray((arcpy.Raster(stack)),
                                       (arcpy.Raster(stack)).width,
                                       (arcpy.Raster(stack)).height)
 arcpy.AddMessage ("Images stacked...")
-
 
 def arcRast (inputRasterList,i):
     """
@@ -70,7 +76,7 @@ row_no = -1
 for row in slope_rast:
     row_no = row_no +1
     if row_no%100 == 0:
-        arcpy.AddMessage ('Row number processed: ' + str(row_no))
+        print('Row number processed: ' + str(row_no))
     cell_no = -1
     for cell in row:
         cell_no = cell_no + 1
@@ -99,6 +105,7 @@ for row in slope_rast:
             pvalue_rast[row_no][cell_no] = noData
         else:
             slope, intercept, r_value, p_value, std_err = stats.linregress(x, cell_list)
+            medslope, medintercept, lo_slope, up_slope = stats.mstats.theilslopes(cell_list,x,0.95)
             slope_rast[row_no][cell_no] = slope
             pvalue_rast[row_no][cell_no] = p_value
             std_err_rast[row_no][cell_no] = std_err
