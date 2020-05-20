@@ -17,6 +17,17 @@ import os
 # Input parameters
 outputFolder = arcpy.GetParameterAsText(0)
 inputRasters = arcpy.GetParameterAsText(1)
+linRegBool = arcpy.GetParameterAsText(2)
+theilSenBool = arcpy.GetParameterAsText(3)
+
+# Trend check and error
+if linRegBool == "false" and theilSenBool == "false":
+    arcpy.AddError("No Trend method found. Please tick one of the boxes")
+    exit
+elif  linRegBool == "true":
+    arcpy.AddMessage ("Simple Linear regression selected...")
+elif  theilSenBool == "true":
+    arcpy.AddMessage ("Theil-Sen estimator selected...")
 
 # Split strings
 inputRasters = inputRasters.split(";")
@@ -60,14 +71,19 @@ def arcRast (inputRasterList,i):
     return arcRaster
 
 # create empty numpy arrays
-slope_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
-dataCount_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
-pvalue_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
-std_err_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
+dataCount_rast = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))  
+if linRegBool == "true":   
+    linReg_slope = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
+    linReg_pvalue = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
+    linReg_std_err = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
+if theilSenBool == "true":
+    theilSen_slope = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
+    theilSen_loSlope = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
+    theilSen_upSlope = np.zeros((arcRast(inputRastDir,1).height,arcRast(inputRastDir,1).width))
 
 # Pixel Iteration
 row_no = -1
-for row in slope_rast:
+for row in dataCount_rast:
     row_no = row_no +1
     if row_no%100 == 0:
         arcpy.AddMessage ('Row number processed: ' + str(row_no))
@@ -91,16 +107,30 @@ for row in slope_rast:
             del x[remove]          
                 
          # Linear Regression and count datapoints
-        if len(cell_list) == 0:
-            slope_rast[row_no][cell_no] = noData
-            dataCount_rast[row_no][cell_no] = 0
-            pvalue_rast[row_no][cell_no] = noData
+        if len(cell_list) == 0 or len(cell_list) == 1:
+            dataCount_rast[row_no][cell_no] = 0       
+            if linRegBool == "true":   
+                linReg_slope[row_no][cell_no] = noData
+                linReg_pvalue[row_no][cell_no] = noData
+                linReg_std_err[row_no][cell_no] = noData
+            if theilSenBool == "true":
+                theilSen_slope[row_no][cell_no] = noData
+                theilSen_loSlope[row_no][cell_no] = noData
+                theilSen_upSlope[row_no][cell_no] = noData
+    
         else:
-            slope, intercept, r_value, p_value, std_err = stats.linregress(x, cell_list)
-            slope_rast[row_no][cell_no] = slope
-            pvalue_rast[row_no][cell_no] = p_value
-            std_err_rast[row_no][cell_no] = std_err
-            dataCount_rast[row_no][cell_no] = len(cell_list)
+            dataCount_rast[row_no][cell_no] = len(cell_list)            
+            if linRegBool == "true":   
+                slope, intercept, r_value, p_value, std_err = stats.linregress(x, cell_list)
+                linReg_slope[row_no][cell_no] = slope
+                linReg_pvalue[row_no][cell_no] = p_value
+                linReg_std_err[row_no][cell_no] = std_err
+            if theilSenBool == "true":
+                medslope, medintercept, lo_slope, up_slope = stats.mstats.theilslopes(cell_list,x)           
+                theilSen_slope[row_no][cell_no] = medslope
+                theilSen_loSlope[row_no][cell_no] = lo_slope
+                theilSen_upSlope[row_no][cell_no] = up_slope
+                
 
 ## Output File creation
 # Set Arc environment variables for output
@@ -110,26 +140,37 @@ arcpy.env.cellSize = arcRast(inputRastDir,1)
 lowerLeft = arcpy.Point(arcRast(inputRastDir,1).extent.XMin,arcRast(inputRastDir,1).extent.YMin)
 
 # Output raster file names and locations
-slopeOut = os.path.join(outputFolder,r"slope.tif")
 dataCountOut = os.path.join(outputFolder,r"dataCount.tif")
-pvalueOut = os.path.join(outputFolder,r"pvalue.tif")
-stderrOut = os.path.join(outputFolder,r"stderr.tif")
-
-
-#  (bands, rows, columns)
-# change yvalue for band number - i.e. image number
-output_r = arcpy.NumPyArrayToRaster(slope_rast,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
-output_r.save(slopeOut)
+if linRegBool == "true": 
+    linReg_slopeOut = os.path.join(outputFolder,r"linReg_slope.tif")
+    linReg_pvalueOut = os.path.join(outputFolder,r"linReg_pvalue.tif")
+    linReg_stderrOut = os.path.join(outputFolder,r"linReg_std_err.tif")
+if theilSenBool == "true":
+    theilSen_slopeOut = os.path.join(outputFolder,r"theilSen_slope.tif")
+    theilSen_loSlopeOut = os.path.join(outputFolder,r"theilSen_loSlope.tif")
+    theilSen_upSlopeOut = os.path.join(outputFolder,r"theilSen_upSlope.tif")    
+    
+# Save outpu files
 output_r = arcpy.NumPyArrayToRaster(dataCount_rast,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
 output_r.save(dataCountOut)
-output_r = arcpy.NumPyArrayToRaster(pvalue_rast,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
-output_r.save(pvalueOut)
-output_r = arcpy.NumPyArrayToRaster(std_err_rast,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
-output_r.save(stderrOut)
-
-        
+if linRegBool == "true":   
+    output_r = arcpy.NumPyArrayToRaster(linReg_slope,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+    output_r.save(linReg_slopeOut)
+    output_r = arcpy.NumPyArrayToRaster(linReg_pvalue,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+    output_r.save(linReg_pvalueOut)
+    output_r = arcpy.NumPyArrayToRaster(linReg_std_err,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+    output_r.save(linReg_stderrOut)
+if theilSenBool == "true":
+    output_r = arcpy.NumPyArrayToRaster(theilSen_slope,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+    output_r.save(theilSen_slopeOut)
+    output_r = arcpy.NumPyArrayToRaster(theilSen_loSlope,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+    output_r.save(theilSen_loSlopeOut)
+    output_r = arcpy.NumPyArrayToRaster(theilSen_upSlope,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
+    output_r.save(theilSen_upSlopeOut)
+     
+    
 """
-IDEAS
+Future Dev
 - irregular shape handling
-- pixel clustering
+- pixel clustering/aggregation of multi-size pixels
 """
