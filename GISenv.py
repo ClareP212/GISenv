@@ -13,7 +13,6 @@ import numpy as np
 from scipy import stats
 import os
 
-
 # Input parameters
 outputFolder = arcpy.GetParameterAsText(0)
 inputRasters = arcpy.GetParameterAsText(1)
@@ -42,6 +41,12 @@ for i in range(len(inputRasters)):
 xTime = []
 for i in range(len(inputRasters)):
     xTime.append(int(os.path.basename(inputRasters[i].split(" ")[1])))
+
+# Set Arc environment variables (for output)
+arcpy.env.overwriteOutput = True
+arcpy.env.outputCoordinateSystem = arcRast(inputRastDir,1)
+arcpy.env.cellSize = arcRast(inputRastDir,1)
+lowerLeft = arcpy.Point(arcRast(inputRastDir,1).extent.XMin,arcRast(inputRastDir,1).extent.YMin)
     
 # Get NoData values from input raster 
 for i in inputRastDir :
@@ -52,7 +57,7 @@ arcpy.AddMessage (" X Values = ")
 arcpy.AddMessage (xTime) 
     
 ## Creating raster stack tif file
-arcpy.CompositeBands_management(inputRastDir,"stack") #.tif extension broke this?
+arcpy.CompositeBands_management(inputRastDir,"stack")
 stack = os.path.join(outputFolder,r"stack.tif")
 stackNP = arcpy.RasterToNumPyArray((arcpy.Raster(stack)),
                          (arcpy.Point((arcpy.Raster(stack)).extent.XMin,
@@ -131,14 +136,7 @@ for row in dataCount_rast:
                 theilSen_loSlope[row_no][cell_no] = lo_slope
                 theilSen_upSlope[row_no][cell_no] = up_slope
                 
-
 ## Output File creation
-# Set Arc environment variables for output
-arcpy.env.overwriteOutput = True
-arcpy.env.outputCoordinateSystem = arcRast(inputRastDir,1)
-arcpy.env.cellSize = arcRast(inputRastDir,1)
-lowerLeft = arcpy.Point(arcRast(inputRastDir,1).extent.XMin,arcRast(inputRastDir,1).extent.YMin)
-
 # Output raster file names and locations
 dataCountOut = os.path.join(outputFolder,r"dataCount.tif")
 if linRegBool == "true": 
@@ -167,8 +165,7 @@ if theilSenBool == "true":
     output_r.save(theilSen_loSlopeOut)
     output_r = arcpy.NumPyArrayToRaster(theilSen_upSlope,lowerLeft, arcRast(inputRastDir,1).meanCellWidth, arcRast(inputRastDir,1).meanCellHeight,noData)
     output_r.save(theilSen_upSlopeOut)
-     
-    
+ 
 """
 Future Dev
 - irregular shape handling
